@@ -1,3 +1,5 @@
+
+# we will create the directory for this in the configuration manager
 artifacts_root: artifacts
 
 
