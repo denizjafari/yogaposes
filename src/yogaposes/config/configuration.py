@@ -1,6 +1,6 @@
 from yogaposes.constants import *
 from yogaposes.utils.common import read_yaml, create_directories
-from yogaposes.entity.config_entity import (DataIngestionConfig)
+from yogaposes.entity.config_entity import (DataIngestionConfig, PrepareBaseModelConfig)
 
 class configurationManager:
     def __init__(self, config_file_path = CONFIG_FILE_PATH, params_file_path = PARAMS_FILE_PATH):
@@ -16,3 +16,17 @@ class configurationManager:
         data_ingestion_config = DataIngestionConfig(root_dir= config.root_dir, source_URL=config.source_URL)
 
         return data_ingestion_config
+
+    def get_prepare_base_model_config(self) -> PrepareBaseModelConfig:
+        config = self.config.prepare_base_model
+        create_directories([config.root_dir])
+
+        get_prepare_base_model_config = PrepareBaseModelConfig(root_dir= config.root_dir,
+                                                               resnet_base_model_path=config.resnet_base_model_path,
+                                                               resnet_updated_base_model_path= config.resnet_updated_base_model_path,
+                                                               params_class=self.params.CLASSES,
+                                                               params_image_size= self.params.IMAGE_SIZE,
+                                                               params_pretrained = self.params.PRETRAINED
+                                                               )
+
+        return get_prepare_base_model_config

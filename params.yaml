@@ -1,1 +1,11 @@
-key: value
+AUGMENTATION: True # going to do some data augmentation
+# in pytorch the image size is presented as [channel, height, width]
+IMAGE_SIZE: [3, 224, 224] # as per ResNet18 model input size
+BATCH_SIZE: 16
+INCLUDE_TOP: False
+EPOCHS: 2
+CLASSES: 5
+WEIGHTS: imagenet
+LEARNING_RATE: 0.08
+PRETRAINED: True
+# DEVICE: cuda   # can address this by a condition in our code
