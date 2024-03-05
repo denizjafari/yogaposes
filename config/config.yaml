@@ -15,5 +15,6 @@ prepare_base_model:
   
 
 model_training:
-  root_dir = artifacts/training
-  resnet_trained_model_path = artifacts/training/resnet_model.pth
+  root_dir: artifacts/training
+  resnet_trained_model_path: artifacts/training/resnet_model.pth
+ 

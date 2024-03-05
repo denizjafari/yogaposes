@@ -3,7 +3,7 @@ AUGMENTATION: True # going to do some data augmentation
 IMAGE_SIZE: [3, 224, 224] # as per ResNet18 model input size
 BATCH_SIZE: 16
 INCLUDE_TOP: False
-EPOCHS: 2
+EPOCHS: 5
 CLASSES: 5
 WEIGHTS: imagenet
 LEARNING_RATE: 0.08
