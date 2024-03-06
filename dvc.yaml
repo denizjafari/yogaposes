@@ -1,0 +1,52 @@
+stages:
+
+  # to complete this section look at the config.yaml file
+  # 4 parameters under each subsection: cmd, deps, params, outs 
+  # cmd: the code that needs to be run
+  # deps: are dependencies, all pipelines are depended to their own pipeline, in the different folders not the ain folder
+
+
+  data_ingestion:
+    cmd: python src/yogaposes/pipeline/stage_01_data_ingestion.py
+    deps:
+      -  src/yogaposes/pipeline/stage_01_data_ingestion.py
+      -  config/config.yaml
+    outs:
+      - artifacts/data_ingestion/yoga-poses-dataset
+
+  prepare_base_model:
+    cmd: python src/yogaposes/pipeline/stage_02_prepare_based_model.py
+    deps:
+      - src/yogaposes/pipeline/stage_02_prepare_based_model.py
+      - config/config.yaml
+    params:
+      - IMAGE_SIZE
+      - CLASSES
+      - PRETRAINED 
+    
+    outs:
+      - artifacts/prepare_base_model
+     
+  model_training:
+    cmd: python src/yogaposes/pipeline/stage_03_model_training.py
+    deps: 
+      - src/yogaposes/pipeline/stage_03_model_training.py
+      - config/config.yaml
+      - artifacts/data_ingestion/yoga-poses-dataset
+      - artifacts/prepare_base_model
+
+    params:
+      - AUGMENTATION
+      - IMAGE_SIZE
+      - BATCH_SIZE
+      - INCLUDE_TOP
+      - EPOCHS
+      - CLASSES
+      - WEIGHTS
+      - LEARNING_RATE
+      - PRETRAINED
+
+    outs:
+      - artifacts/training/resnet_model.pth
+
+

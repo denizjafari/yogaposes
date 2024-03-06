@@ -1,0 +1,84 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python src/yogaposes/pipeline/stage_01_data_ingestion.py
+    deps:
+    - path: config/config.yaml
+      hash: md5
+      md5: 3a9b466bd614a4c5268fc550bbfe6985
+      size: 583
+    - path: src/yogaposes/pipeline/stage_01_data_ingestion.py
+      hash: md5
+      md5: d305e62e30d962dc5a870202a407e6fa
+      size: 843
+    outs:
+    - path: artifacts/data_ingestion/yoga-poses-dataset
+      hash: md5
+      md5: 38483bf11a8ea1939b1823439762e067.dir
+      size: 316225751
+      nfiles: 1551
+  prepare_base_model:
+    cmd: python src/yogaposes/pipeline/stage_02_prepare_based_model.py
+    deps:
+    - path: config/config.yaml
+      hash: md5
+      md5: 3a9b466bd614a4c5268fc550bbfe6985
+      size: 583
+    - path: src/yogaposes/pipeline/stage_02_prepare_based_model.py
+      hash: md5
+      md5: a5d4ab7f91f082d267585191cf7b710c
+      size: 881
+    params:
+      params.yaml:
+        CLASSES: 5
+        IMAGE_SIZE:
+        - 3
+        - 224
+        - 224
+        PRETRAINED: true
+    outs:
+    - path: artifacts/prepare_base_model
+      hash: md5
+      md5: 0108f88d575a4ff829b93733d426ea86.dir
+      size: 91659396
+      nfiles: 2
+  model_training:
+    cmd: python src/yogaposes/pipeline/stage_03_model_training.py
+    deps:
+    - path: artifacts/data_ingestion/yoga-poses-dataset
+      hash: md5
+      md5: 38483bf11a8ea1939b1823439762e067.dir
+      size: 316225751
+      nfiles: 1551
+    - path: artifacts/prepare_base_model
+      hash: md5
+      md5: 0108f88d575a4ff829b93733d426ea86.dir
+      size: 91659396
+      nfiles: 2
+    - path: config/config.yaml
+      hash: md5
+      md5: 3a9b466bd614a4c5268fc550bbfe6985
+      size: 583
+    - path: src/yogaposes/pipeline/stage_03_model_training.py
+      hash: md5
+      md5: c2ec134bd3ed449f93e9987881dde559
+      size: 871
+    params:
+      params.yaml:
+        AUGMENTATION: true
+        BATCH_SIZE: 16
+        CLASSES: 5
+        EPOCHS: 5
+        IMAGE_SIZE:
+        - 3
+        - 224
+        - 224
+        INCLUDE_TOP: false
+        LEARNING_RATE: 0.08
+        PRETRAINED: true
+        WEIGHTS: imagenet
+    outs:
+    - path: artifacts/training/resnet_model.pth
+      hash: md5
+      md5: 74e9b5b82d5b56cd91c91df97a8be881
+      size: 44818246
