@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import mlflow
 from urllib.parse import urlparse
-from PIL import ImageFile
+from PIL import ImageFile, Image
 import os 
 from yogaposes.entity.config_entity import TrainingConfig
 
@@ -34,6 +34,7 @@ class ModelTrainer(object):
         self.val_step_fn = self._make_val_step_fn()
         
     def load_model(self):
+     
         return torch.load(self.config.resnet_updated_base_model_path)
     
     def set_seed(self, seed=42):
@@ -186,17 +187,34 @@ class ModelTrainer(object):
         self.val_losses = checkpoint["val_loss"]
         self.model.train() # always use train for resuming traning
         
-    def predict(self,x):
+    def _preprocess_image(self, filename):
+        image = Image.open(filename)
+        # Allow loading of truncated images
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
         
+        # image net statistics
+        normalizer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229,0.224,0.225])
+        
+        composer = Compose([Resize(256), CenterCrop(224), ToTensor(), normalizer])
+        image = composer(image).unsqueeze(0)
+        return image
+        
+    
+    def predict(self,x_filename):
+        
+        self.load_checkpoint()
         self.model.eval()
-        
+        x = self._preprocess_image(x_filename)
         x_tensor = torch.as_tensor(x).float()
         y_hat_tensor = self.model(x_tensor.to(self.device))
         
         # set it back to the train mode
         self.model.train()
         
-        return y_hat_tensor.detach().cpu().numpy()
+        labels = {0:'downdog', 1: 'godess', 2:'plank', 3:'tree', 4:'warrior2'}
+        prediction=np.argmax(y_hat_tensor.detach().cpu().numpy())
+        
+        return labels[prediction]
     
     def log_into_mlflow(self):
         mlflow.set_registry_uri(self.config.mlflow_uri)
