@@ -22,6 +22,8 @@ Flask
 Flask-Cors
 gdown
 python-dotenv
-
+transformers 
 mediapipe
+torchinfo
+datasets
 -e .

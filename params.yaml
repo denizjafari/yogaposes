@@ -6,6 +6,7 @@ INCLUDE_TOP: False
 EPOCHS: 5
 CLASSES: 5
 WEIGHTS: imagenet
-LEARNING_RATE: 0.08
+LEARNING_RATE: 0.0002
 PRETRAINED: True
+TYPE: "vit"
 # DEVICE: cuda   # can address this by a condition in our code
