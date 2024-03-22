@@ -30,7 +30,7 @@ class ModelTrainingPipelineViT:
         training = ModelTrainerViT(config=training_config)
         training.train()
         # comment out the line below to turn off ml flow
-        training.log_into_mlflow()
+        #training.log_into_mlflow()
 
 
 

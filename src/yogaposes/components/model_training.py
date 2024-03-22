@@ -329,6 +329,7 @@ class ModelTrainerViT(object):
                                 logging_steps=10,
                             )
         
+        training_args.report_to = []
         
         def _collate_fn(examples):
             pixels = torch.stack([example["pixel"] for example in examples])
@@ -381,42 +382,12 @@ class ModelTrainerViT(object):
         
     def save_checkpoint(self, trainer):
         trainer.save_model(self.config.vit_trained_model_path)
-        checkpoint = {'epoch': self.total_epoches,
-                      'model_state_dict': self.model.state_dict(),
-                      'loss': self.losses,
-                      'accuracy': self.accuracy,
-                      'val_loss': self.val_losses,
-                      'val_accuracy': self.val_accuracy
-                      }
-        torch.save(checkpoint, self.config.transformer_trained_model_path)
+        
         
     def load_checkpoint(self):
-        checkpoint = torch.load(self.config.transformer_trained_model_path)
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.total_epoches = checkpoint["epoch"]
-        self.losses = checkpoint["loss"]
-        self.accuracy = checkpoint['accuracy']
-        self.val_accuracy = checkpoint['val_accuracy']
-        self.val_losses = checkpoint["val_loss"]
-        self.model.train() # always use train for resuming traning    
+        self.processor = ViTImageProcessor.from_pretrained(self.config.vit_trained_model_path)
+        self.model = ViTForImageClassification.from_pretrained(self.config.vit_trained_model_path)  
     
-    def log_into_mlflow(self):
-        mlflow.set_registry_uri(self.config.mlflow_uri)
-        tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
-        
-        with mlflow.start_run():
-            mlflow.log_params(self.config.all_params)
-            mlflow.log_metrics({'train_loss': np.mean(self.losses),'val_loss': np.mean(self.val_losses), 'train_accuracy': np.mean(self.accuracy), 'val_accuracy': np.mean(self.val_accuracy)})
-        
-            # Model registry does not work with file store
-            if tracking_url_type_store != "file":
-
-                # Register the model
-                # There are other ways to use the Model Registry, which depends on the use case,
-                # please refer to the doc for more information:
-                # https://mlflow.org/docs/latest/model-registry.html#api-workflow
-                mlflow.pytorch.log_model(self.model, "model", registered_model_name="ViTModel")
-            else:
-                mlflow.pytorch.log_model(self.model, "model")
+    
 
         
