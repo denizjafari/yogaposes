@@ -1,7 +1,7 @@
 from yogaposes import logger
 from yogaposes.pipeline.stage_01_data_ingestion import DataIngestionTrainingPipeline
 from yogaposes.pipeline.stage_02_prepare_based_model import PrepareBaseModelTrainingPipeline
-from yogaposes.pipeline.stage_03_model_training import ModelTrainingPipeline
+from yogaposes.pipeline.stage_03_model_training import ModelTrainingPipeline, ModelTrainingPipelineViT
 
 
 
@@ -34,7 +34,7 @@ STAGE_NAME = "Model Training"
 
 try:
     logger.info(f">>>>>> stage {STAGE_NAME} started <<<<<<")
-    model_trainer = ModelTrainingPipeline()
+    model_trainer = ModelTrainingPipelineViT()
     model_trainer.main()
     logger.info(f">>>>>> stage {STAGE_NAME} completed <<<<<<\nx==========x")
 except Exception as e:

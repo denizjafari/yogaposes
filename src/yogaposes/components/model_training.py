@@ -1,8 +1,11 @@
 import torch
 import torch.optim as optim
 from torch import nn
-from torchvision.transforms import Compose, ToTensor, Normalize, Resize, CenterCrop
+from datasets import load_dataset
+from torchvision.transforms import Compose, ToTensor, Normalize, Resize, CenterCrop, ToPILImage
 from torchvision.datasets import ImageFolder
+from transformers import ViTForImageClassification, ViTImageProcessor
+from transformers import Trainer, TrainingArguments
 from torch.utils.data import DataLoader
 import numpy as np
 import mlflow
@@ -10,6 +13,10 @@ from urllib.parse import urlparse
 from PIL import ImageFile, Image
 import os 
 from yogaposes.entity.config_entity import TrainingConfig
+# Evaluation
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 
 
@@ -235,4 +242,181 @@ class ModelTrainer(object):
             else:
                 mlflow.pytorch.log_model(self.model, "model")
         
-            
+
+class ModelTrainerViT(object):
+    def __init__(self, config:TrainingConfig):
+        self.config = config
+        self.dataset= self.load_dataset()
+        self.model, self.processor = self.load_model()
+        
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.model.to(self.device)
+        
+        self.preprocess_data()
+        
+        
+        
+    def load_model(self):
+        
+        
+        id2label = dict((k,v) for k,v in enumerate(self.dataset['train'].features['label'].names))
+        label2id = dict((v,k) for k,v in enumerate(self.dataset['train'].features['label'].names))
+        
+        model_name = "google/vit-base-patch16-224"   #TO DO: MIGHT BE BETTER TO ENTER THIS AS CONFIC, NOT SURE YET
+        processor = ViTImageProcessor.from_pretrained(model_name)
+        #feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-base-patch16-224')
+        
+        model = ViTForImageClassification.from_pretrained(model_name, 
+                                                          num_labels=len(id2label),
+                                                          ignore_mismatched_sizes=True,
+                                                          id2label=id2label, label2id=label2id)
+        
+        return model, processor
+    
+    def set_seed(self, seed=42):
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+    
+    def load_dataset(self):
+        
+        # loading the dataset using hugging face dataset library since we are going to use their training function
+        
+        #val_data = ImageFolder(root=os.path.join(self.config.traning_data,'DATASET/TEST'), transform=composer)
+        dataset = load_dataset("imagefolder", data_files={"train": f"{self.config.traning_data}/DATASET/TRAIN/**", "test": f"{self.config.traning_data}/DATASET/TEST/**"}, drop_labels=False)
+        
+        return dataset
+    
+    
+    
+        
+    def preprocess_data(self):
+        # Allow loading of truncated images
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+        
+        # trained images statistics
+        normalizer = Normalize(mean=self.processor.image_mean, std=self.processor.image_std)
+        
+        # resize the input
+        _transformer = Compose([Resize((224,224)), ToTensor(), normalizer])
+        
+        def transf(arg):
+            arg['pixel'] = [_transformer(image.convert('RGB')) for image in arg['image']]
+            return arg
+        
+        self.dataset['train'].set_transform(transf)
+        self.dataset['test'].set_transform(transf)
+        
+    
+    
+    
+    def load_trainer(self):
+        training_args = TrainingArguments(
+                                output_dir=self.config.vit_trained_model_path,             # Output directory
+                                save_strategy="epoch",
+                                evaluation_strategy="epoch",
+                                learning_rate=self.config.params_learning_rate,
+                                num_train_epochs=self.config.params_epoches,                 # Total number of training epochs
+                                per_device_train_batch_size=self.config.params_batch_size,      # Batch size per device during training
+                                per_device_eval_batch_size=self.config.params_batch_size//2,       # Batch size for evaluation
+                                warmup_steps=500,                   # Number of warmup steps for learning rate scheduler
+                                weight_decay=0.01,                  # Strength of weight decay
+                                load_best_model_at_end=True,
+                                metric_for_best_model="accuracy",
+                                logging_dir='logs',               # Directory for storing logs
+                                remove_unused_columns=False,
+                                logging_steps=10,
+                            )
+        
+        
+        def _collate_fn(examples):
+            pixels = torch.stack([example["pixel"] for example in examples])
+            labels = torch.tensor([example["label"] for example in examples])
+            return {"pixel_values": pixels, "labels": labels}
+
+        def _compute_metrics(eval_pred):
+            predictions, labels = eval_pred
+            predictions = np.argmax(predictions, axis=1)
+            return dict(accuracy=accuracy_score(predictions,labels))
+    
+        trainer = Trainer(
+                            self.model, 
+                            training_args, 
+                            train_dataset=self.dataset["train"], 
+                            eval_dataset=self.dataset["test"], 
+                            data_collator=_collate_fn, 
+                            compute_metrics=_compute_metrics,
+                            tokenizer=self.processor,
+                            )
+        return trainer
+    
+    def train(self):
+        trainer = self.load_trainer()
+        trainer.train()
+        self.save_checkpoint(trainer)
+        
+    def _preprocess_image(self, filename):
+        # Allow loading of truncated images
+        ImageFile.LOAD_TRUNCATED_IMAGES = True       
+        # Load an image
+        image = Image.open(filename)
+        encoding = self.processor(images=image, return_tensors="pt")
+        return encoding
+
+    def predict(self,x_filename):
+        self.load_checkpoint()
+        image = self._preprocess_image(x_filename)
+        image.to(self.device)
+
+        output = self.model(**image)
+        # Extract the predicted class ID
+        y_pred = output.logits.argmax(-1).item()
+       
+        
+        labels = self.dataset["train"].features["label"].names
+    
+        
+        return labels[y_pred]
+        
+    def save_checkpoint(self, trainer):
+        trainer.save_model(self.config.vit_trained_model_path)
+        checkpoint = {'epoch': self.total_epoches,
+                      'model_state_dict': self.model.state_dict(),
+                      'loss': self.losses,
+                      'accuracy': self.accuracy,
+                      'val_loss': self.val_losses,
+                      'val_accuracy': self.val_accuracy
+                      }
+        torch.save(checkpoint, self.config.transformer_trained_model_path)
+        
+    def load_checkpoint(self):
+        checkpoint = torch.load(self.config.transformer_trained_model_path)
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.total_epoches = checkpoint["epoch"]
+        self.losses = checkpoint["loss"]
+        self.accuracy = checkpoint['accuracy']
+        self.val_accuracy = checkpoint['val_accuracy']
+        self.val_losses = checkpoint["val_loss"]
+        self.model.train() # always use train for resuming traning    
+    
+    def log_into_mlflow(self):
+        mlflow.set_registry_uri(self.config.mlflow_uri)
+        tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+        
+        with mlflow.start_run():
+            mlflow.log_params(self.config.all_params)
+            mlflow.log_metrics({'train_loss': np.mean(self.losses),'val_loss': np.mean(self.val_losses), 'train_accuracy': np.mean(self.accuracy), 'val_accuracy': np.mean(self.val_accuracy)})
+        
+            # Model registry does not work with file store
+            if tracking_url_type_store != "file":
+
+                # Register the model
+                # There are other ways to use the Model Registry, which depends on the use case,
+                # please refer to the doc for more information:
+                # https://mlflow.org/docs/latest/model-registry.html#api-workflow
+                mlflow.pytorch.log_model(self.model, "model", registered_model_name="ViTModel")
+            else:
+                mlflow.pytorch.log_model(self.model, "model")
+
+        

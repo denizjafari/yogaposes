@@ -26,6 +26,7 @@ class TrainingConfig:
     root_dir: Path 
     resnet_trained_model_path: Path
     resnet_updated_base_model_path: Path
+    vit_trained_model_path: Path
     traning_data: Path
     params_augmentation: bool
     params_image_size: list 

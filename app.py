@@ -1,4 +1,4 @@
-from yogaposes.pipeline.prediction import PosePrediction
+from yogaposes.pipeline.prediction import PosePrediction, PredictionPipelineViT
 from yogaposes.utils.common import decodeImage
 from flask_cors import CORS, cross_origin
 import os
@@ -15,7 +15,7 @@ CORS(app)
 class YogaPoseApp:
     def __init__(self):
         self.filename = 'sample-image.jpg'
-        self.classifier = PosePrediction()
+        self.classifier = PredictionPipelineViT()
         
 
 # you wanna get sth from the app
@@ -42,8 +42,8 @@ def predictRoute():
 
 if __name__ == '__main__':
     clApp = YogaPoseApp()
-    app.run(host='0.0.0.0', port=8000)
-
+    app.run(host='0.0.0.0', port=8000) # for local use
+    #app.run(host='0.0.0.0', port=80) # for azure deployment use
 
 # if __name__ == "__main__":
 #     try:

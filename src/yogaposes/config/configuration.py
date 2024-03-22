@@ -46,9 +46,10 @@ class configurationManager:
         
         create_directories([model_training.root_dir])
         
-        training_config = TrainingConfig(root_dir= model_training.resnet_trained_model_path, 
+        training_config = TrainingConfig(root_dir= model_training.root_dir, 
                                         resnet_trained_model_path= model_training.resnet_trained_model_path,
                                         resnet_updated_base_model_path= prepare_base_model.resnet_updated_base_model_path,
+                                        vit_trained_model_path= model_training.vit_trained_model_path,
                                         traning_data = training_data,
                                         params_augmentation = self.params.AUGMENTATION,
                                         params_image_size = self.params.IMAGE_SIZE,
